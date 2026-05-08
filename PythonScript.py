@@ -116,16 +116,11 @@ def convert_sound_array(original_adc_values):
     # Scale normalised audio into the 16-bit signed WAV range.
     sound_np_array = sound_np_array * 32760
 
-    # Convert to unsigned 16-bit because waveFile.setsampwidth(2)
+    # Convert to signed 16-bit because waveFile.setsampwidth(2)
     # means each WAV sample is 2 bytes.
     sound_np_array = np.astype(sound_np_array, np.int16)
     
     return sound_np_array
-
-
-
-
-
 
 
 
@@ -174,131 +169,150 @@ def decode_packed_12bit_samples(packed_data):
 def main():
     
     # -------------------- Serial setup --------------------
-
-    # Iterates for all serial devices
+        # Iterates for all serial devices
     ports = serial.tools.list_ports.comports()
 
-    for device in ports:
-        print(device)
 
-    # Sets up USART COM for STM.
+    for port in ports:
+        # Check description or hardware ID for STM identifiers
+        if "STM" in port.description:
+            stm_ports = port
+            print(f"Found STM Device: {port.device} - {port.description}")
+            
+    if not stm_ports:
+        print("No STM devices found.")
+    
     # Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
-    ser = serial.Serial("/dev/cu.usbmodem1103", 921600, timeout=0.05)
+    ser = serial.Serial(stm_ports.device, 921600, timeout=0.05)
 
 
-    
-    # -------------------- User settings & Initiate Interface--------------------
-
-    # Choose mode:
-    # "M" = manual fixed-time recording
-    # "D" = distance-triggered recording
-    print("\n"*3)
-    title = f'PROXIMITY TRIGGERED DATA AQUSITION SYSTEM'
-    print(title)
-    title_len = len(title)
-    print("="*title_len)
-    command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
-    
-    sample_rate = 44100
+    while(True):
         
-    # STM sends 192 packed bytes per UART transmit. 
-    # 192 bytes = 128 samples.
-    uart_read_chunk_size = 192
-    
-    
-    # -------------------- Receive packed bytes --------------------
+        # -------------------- User settings & Initiate Interface--------------------
 
-    packed_data = bytearray()
-
-    if command_letter == "M":
+        # Choose mode:
+        # "M" = manual fixed-time recording
+        # "D" = distance-triggered recording
+        print("\n"*3)
+        title = 'PROXIMITY TRIGGERED DATA AQUSITION SYSTEM'
+        print(title)
+        title_len = len(title)
+        print("="*title_len)
+        command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
         
-        #get recording time
-        recording_time_seconds = int(input("Provide Desired Recording Time (seconds):\n"))
+        sample_rate = 44100
+            
+        # STM sends 192 packed bytes per UART transmit. 
+        # 192 bytes = 128 samples.
+        uart_read_chunk_size = 192
         
-        # Manual mode has a known target byte count.
-        number_of_samples = recording_time_seconds * sample_rate
-
-        # Every 2 samples are packed into 3 bytes.
-        total_number_of_bytes = (number_of_samples // 2) * 3
-
-        # Start manual mode on STM.
-        ser.write(b"M")
         
-        print("\nRunning manual mode... please wait")
-        
-        # M mode uses the same receive style as D mode.
-        # It just exits once enough packed bytes have been received.
-        while len(packed_data) < total_number_of_bytes:
-            current_bytes = ser.read(uart_read_chunk_size)
-            packed_data.extend(current_bytes)
+        # -------------------- Receive packed bytes --------------------
 
-        # Stop STM from sending.
-        ser.write(b"S")
+        packed_data = bytearray()
 
-        # Manual mode may over-read because we read in 192-byte chunks.
-        # Trim back to the exact number of packed bytes expected.
-        if len(packed_data) > total_number_of_bytes:
-            packed_data = packed_data[:total_number_of_bytes]
+        if command_letter == "M":
+            
+            #get recording time
+            recording_time_seconds = int(input("Provide Desired Recording Time (seconds):\n"))
+            
+            # Manual mode has a known target byte count.
+            number_of_samples = recording_time_seconds * sample_rate
 
+            # Every 2 samples are packed into 3 bytes.
+            total_number_of_bytes = (number_of_samples // 2) * 3
 
-    elif command_letter == "D":
-        # Distance mode does not know the final byte count.
-        # The STM only sends audio while the object is within 10 cm.
-        print("\nDistance mode started.")
-        print("Press Ctrl+C to stop recording.\n")
-
-        # Start distance-triggered mode on STM.
-        ser.write(b"D")
-
-        try:
-            while True:
+            # Start manual mode on STM.
+            ser.write(b"M")
+            
+            print("\nRunning manual mode... please wait")
+            
+            # M mode uses the same receive style as D mode.
+            # It just exits once enough packed bytes have been received.
+            while len(packed_data) < total_number_of_bytes:
                 current_bytes = ser.read(uart_read_chunk_size)
                 packed_data.extend(current_bytes)
 
-        except KeyboardInterrupt:
             # Stop STM from sending.
             ser.write(b"S")
-            print("\nStopping distance mode...\n")
+
+            # Manual mode may over-read because we read in 192-byte chunks.
+            # Trim back to the exact number of packed bytes expected.
+            if len(packed_data) > total_number_of_bytes:
+                packed_data = packed_data[:total_number_of_bytes]
+
+
+        elif command_letter == "D":
+            # Distance mode does not know the final byte count.
+            # The STM only sends audio while the object is within 10 cm.
+            print("\nDistance mode started.")
+            print("Press Ctrl+C to stop recording.\n")
+
+            # Start distance-triggered mode on STM.
+            ser.write(b"D")
+
+            try:
+                while True:
+                    current_bytes = ser.read(uart_read_chunk_size)
+                    packed_data.extend(current_bytes)
+
+            except KeyboardInterrupt:
+                # Stop STM from sending.
+                ser.write(b"S")
+                print("\nStopping distance mode...\n")
 
 
 
-    else:
-        print("Invalid command_letter. Use 'M' or 'D'.")
-        ser.close()
-        exit()
+        else:
+            print("Invalid command_letter. Use 'M' or 'D'.")
+            ser.close()
+            exit()
+        
+        
+        
+        # -------------------- Decode packed bytes --------------------
+
+        original_adc_values = decode_packed_12bit_samples(packed_data)
+
+        print("Received packed bytes:", len(packed_data))
+        print("Decoded samples:", len(original_adc_values))
+
+        if len(original_adc_values) == 0:
+            print("\nNo audio samples received.\n")
+            ser.close()
+            exit()
+ 
+ 
+        # -------------------- Print results -------------------- 
+        num_outputs = int(input("Provide number of outputs desired :"))
+        for i in range(len(num_outputs)):
+            output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n Descritions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+            
+            if output == "CSV":
+                
+                save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
+                
+            elif output == "PNG":
+                
+                save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
+                
+            elif output == "WAVE":
+                
+                save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
+            
+        
+        
+        # -------------------- Cleanup / repeat -------------------- 
+            
+        repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
     
-    
-    
-    # -------------------- Decode packed bytes --------------------
-
-    original_adc_values = decode_packed_12bit_samples(packed_data)
-
-    print("Received packed bytes:", len(packed_data))
-    print("Decoded samples:", len(original_adc_values))
-
-    if len(original_adc_values) == 0:
-        print("\nNo audio samples received.\n")
-        ser.close()
-        exit()
-    
-    output = input("Please specify output format (CSV,PNG,WAVE)\n Descritions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio")
-    
-    if output == "CSV":
+        if(repeat == "Y"):
+            continue
         
-        save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
-        
-    elif output == "PNG":
-        
-        save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
-        
-    elif output == "WAVE":
-        
-        save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
-        
-        
-    # -------------------- Cleanup --------------------  
-    ser.close()
-
+        elif(repeat == "N"): 
+            ser.close()
+            exit()
+       
 
 
 
