@@ -172,6 +172,7 @@ def main():
         # Iterates for all serial devices
     ports = serial.tools.list_ports.comports()
 
+    stm_ports = None
 
     for port in ports:
         # Check description or hardware ID for STM identifiers
@@ -179,9 +180,9 @@ def main():
             stm_ports = port
             print(f"Found STM Device: {port.device} - {port.description}")
             
-    if not stm_ports:
+    if stm_ports is None:
         print("No STM devices found.")
-    
+        print("Plug in STM and retry...")
     # Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
     ser = serial.Serial(stm_ports.device, 921600, timeout=0.05)
 
@@ -194,7 +195,7 @@ def main():
         # "M" = manual fixed-time recording
         # "D" = distance-triggered recording
         print("\n"*3)
-        title = 'PROXIMITY TRIGGERED DATA AQUSITION SYSTEM'
+        title = 'PROXIMITY TRIGGERED DATA AQUISITION SYSTEM'
         print(title)
         title_len = len(title)
         print("="*title_len)
@@ -284,21 +285,29 @@ def main():
  
  
         # -------------------- Print results -------------------- 
-        num_outputs = int(input("Provide number of outputs desired :"))
-        for i in range(len(num_outputs)):
-            output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n Descritions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+        print("\n Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+        num_outputs = int(input("Provide number of outputs desired:"))
+
+        
+        for i in range(num_outputs):
             
-            if output == "CSV":
-                
-                save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
-                
-            elif output == "PNG":
-                
-                save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
-                
-            elif output == "WAVE":
-                
-                save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
+            while(True):
+                output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n").upper()
+                if output == "CSV":
+                    
+                    save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
+                    break
+                elif output == "PNG":
+                    
+                    save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
+                    break
+                elif output == "WAVE":
+                    
+                    save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
+                    break
+                else:
+                    print("Invalid input...Restart")
+                    continue
             
         
         
@@ -313,8 +322,6 @@ def main():
             ser.close()
             exit()
        
-
-
 
     
 if __name__ == "__main__":
