@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -7,31 +6,24 @@ import serial
 import serial.tools.list_ports
 
 
+# -------------------- Export as Wave file function --------------------
+def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
+    """save adc values as Wave form file (listening file)
+
+    Args:
+        sample_rate (int): determine how many samples taken per second (Hz)
+        sound_np_array (array): noralised Adc values b/w (-1 to 1)
+    """
+    with wave.open("test1.wav", "wb") as waveFile:
+        waveFile.setnchannels(1)
+        waveFile.setsampwidth(2)
+        waveFile.setframerate(sample_rate)
+        waveFile.writeframes(sound_np_array.tobytes())
+
+    print("Audio saved to test1.wav")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# -------------------- Export as CSV file function --------------------
 
 def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv", sample_rate=44100):
     """
@@ -48,7 +40,7 @@ def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv",
 
         writer.writerow(["sample_index", "time_seconds", "adc_value"])
 
-        for sample_index, adc_value in enumerate(raw_adc_values):
+        for sample_index, adc_value in enumerate(raw_adc_values):  #enumerate convert list into pairs (idx, val)
             time_seconds = sample_index / sample_rate
 
             writer.writerow([
@@ -63,16 +55,7 @@ def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv",
 
 
 
-
-
-
-
-
-
-
-
-
-
+# -------------------- Export as PNG file function --------------------
 
 def save_adc_plot(raw_adc_values, output_filename="adc_plot.png", sample_rate=None):
     """
@@ -113,77 +96,55 @@ def save_adc_plot(raw_adc_values, output_filename="adc_plot.png", sample_rate=No
     plt.grid(True)
 
     # Save as PNG.
-    plt.savefig(output_filename, dpi=300, bbox_inches="tight")
+    plt.savefig(output_filename, dpi=300, bbox_inches="tight") #dpi: dots per inch, bbox_inches: nice plot
     plt.close()
 
     print(f"Plot saved as {output_filename}")
 
 
+# -------------------- Numpy array converting --------------------
+def convert_sound_array(original_adc_values):
+    sound_np_array = np.array(original_adc_values)
+
+    # Normalise the ADC values into the range -1 to 1.
+    # First shift the mean value in the recording down to 0.
+    sound_np_array = sound_np_array - sound_np_array.mean()
+
+    # Then divide by the new maximum so the largest value becomes 1 and lowest becomes -1.
+    sound_np_array = sound_np_array / np.abs(sound_np_array).max()
+
+    # Scale normalised audio into the 16-bit signed WAV range.
+    sound_np_array = sound_np_array * 32760
+
+    # Convert to unsigned 16-bit because waveFile.setsampwidth(2)
+    # means each WAV sample is 2 bytes.
+    sound_np_array = np.astype(sound_np_array, np.int16)
+    
+    return sound_np_array
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# -------------------- Serial setup --------------------
-
-# Iterates for all serial devices
-devices = serial.tools.list_ports.comports()
-for device in devices:
-    print(device)
-
-# Sets up USART COM for STM.
-# Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
-ser = serial.Serial("COM3", 921600, timeout=0.05)
-
-
-# -------------------- User settings --------------------
-
-sample_rate = 44100
-recording_time_seconds = 10
-
-# Choose mode:
-# "M" = manual fixed-time recording
-# "D" = distance-triggered recording
-command_letter = "M"
-
-# STM sends 192 packed bytes per UART transmit.
-# 192 bytes = 128 samples.
-uart_read_chunk_size = 192
 
 
 # -------------------- Decode function --------------------
 
 def decode_packed_12bit_samples(packed_data):
+    """_summary_
+
+    Args:
+        list/numpy array: packed bytes from STM32
+
+    Returns:
+        list/numpy array: original adc values
+    """
     original_adc_values = []
 
     # Keep only complete 3-byte groups.
     # Every 3 bytes contains exactly two 12-bit samples.
-    usable_length = (len(packed_data) // 3) * 3
+    usable_length = (len(packed_data) // 3) * 3         #ensure length is factor of 3 to spit bytes correctly 
     packed_data = packed_data[:usable_length]
 
     for i in range(0, len(packed_data), 3):
@@ -197,8 +158,8 @@ def decode_packed_12bit_samples(packed_data):
         #   out[0] = sample1 bits [11:4]
         #   out[1] = sample1 bits [3:0] + sample2 bits [11:8]
         #   out[2] = sample2 bits [7:0]
-        sample1 = (b0 << 4) | ((b1 >> 4) & 0x0F)
-        sample2 = ((b1 & 0x0F) << 8) | b2
+        sample1 = (b0 << 4) | ((b1 >> 4) & 0x0F)            # | operator combine 8 bits of sample b0 & to 4 bits b1
+        sample2 = ((b1 & 0x0F) << 8) | b2                   # combine bottom 4 bits of b1 with 8 bits of b2
 
         # Safety mask to keep only 12 bits.
         original_adc_values.append(sample1 & 0x0FFF)
@@ -207,121 +168,140 @@ def decode_packed_12bit_samples(packed_data):
     return original_adc_values
 
 
-# -------------------- Receive packed bytes --------------------
 
-packed_data = bytearray()
+# -------------------- Main function --------------------
 
-if command_letter == "M":
-    # Manual mode has a known target byte count.
-    number_of_samples = recording_time_seconds * sample_rate
+def main():
+    
+    # -------------------- Serial setup --------------------
 
-    # Every 2 samples are packed into 3 bytes.
-    total_number_of_bytes = (number_of_samples // 2) * 3
+    # Iterates for all serial devices
+    ports = serial.tools.list_ports.comports()
 
-    # Start manual mode on STM.
-    ser.write(b"M")
+    for device in ports:
+        print(device)
 
-    # M mode uses the same receive style as D mode.
-    # It just exits once enough packed bytes have been received.
-    while len(packed_data) < total_number_of_bytes:
-        current_bytes = ser.read(uart_read_chunk_size)
-        packed_data.extend(current_bytes)
-
-    # Stop STM from sending.
-    ser.write(b"S")
-
-    # Manual mode may over-read because we read in 192-byte chunks.
-    # Trim back to the exact number of packed bytes expected.
-    if len(packed_data) > total_number_of_bytes:
-        packed_data = packed_data[:total_number_of_bytes]
+    # Sets up USART COM for STM.
+    # Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
+    ser = serial.Serial("/dev/cu.usbmodem1103", 921600, timeout=0.05)
 
 
-elif command_letter == "D":
-    # Distance mode does not know the final byte count.
-    # The STM only sends audio while the object is within 10 cm.
-    print("Distance mode started.")
-    print("Press Ctrl+C to stop recording.")
+    
+    # -------------------- User settings & Initiate Interface--------------------
 
-    # Start distance-triggered mode on STM.
-    ser.write(b"D")
+    # Choose mode:
+    # "M" = manual fixed-time recording
+    # "D" = distance-triggered recording
+    print("\n"*3)
+    title = f'PROXIMITY TRIGGERED DATA AQUSITION SYSTEM'
+    print(title)
+    title_len = len(title)
+    print("="*title_len)
+    command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
+    
+    sample_rate = 44100
+        
+    # STM sends 192 packed bytes per UART transmit. 
+    # 192 bytes = 128 samples.
+    uart_read_chunk_size = 192
+    
+    
+    # -------------------- Receive packed bytes --------------------
 
-    try:
-        while True:
+    packed_data = bytearray()
+
+    if command_letter == "M":
+        
+        #get recording time
+        recording_time_seconds = int(input("Provide Desired Recording Time (seconds):\n"))
+        
+        # Manual mode has a known target byte count.
+        number_of_samples = recording_time_seconds * sample_rate
+
+        # Every 2 samples are packed into 3 bytes.
+        total_number_of_bytes = (number_of_samples // 2) * 3
+
+        # Start manual mode on STM.
+        ser.write(b"M")
+        
+        print("\nRunning manual mode... please wait")
+        
+        # M mode uses the same receive style as D mode.
+        # It just exits once enough packed bytes have been received.
+        while len(packed_data) < total_number_of_bytes:
             current_bytes = ser.read(uart_read_chunk_size)
             packed_data.extend(current_bytes)
 
-    except KeyboardInterrupt:
         # Stop STM from sending.
         ser.write(b"S")
-        print("Stopping distance mode...")
+
+        # Manual mode may over-read because we read in 192-byte chunks.
+        # Trim back to the exact number of packed bytes expected.
+        if len(packed_data) > total_number_of_bytes:
+            packed_data = packed_data[:total_number_of_bytes]
+
+
+    elif command_letter == "D":
+        # Distance mode does not know the final byte count.
+        # The STM only sends audio while the object is within 10 cm.
+        print("\nDistance mode started.")
+        print("Press Ctrl+C to stop recording.\n")
+
+        # Start distance-triggered mode on STM.
+        ser.write(b"D")
+
+        try:
+            while True:
+                current_bytes = ser.read(uart_read_chunk_size)
+                packed_data.extend(current_bytes)
+
+        except KeyboardInterrupt:
+            # Stop STM from sending.
+            ser.write(b"S")
+            print("\nStopping distance mode...\n")
 
 
 
-else:
-    print("Invalid command_letter. Use 'M' or 'D'.")
+    else:
+        print("Invalid command_letter. Use 'M' or 'D'.")
+        ser.close()
+        exit()
+    
+    
+    
+    # -------------------- Decode packed bytes --------------------
+
+    original_adc_values = decode_packed_12bit_samples(packed_data)
+
+    print("Received packed bytes:", len(packed_data))
+    print("Decoded samples:", len(original_adc_values))
+
+    if len(original_adc_values) == 0:
+        print("\nNo audio samples received.\n")
+        ser.close()
+        exit()
+    
+    output = input("Please specify output format (CSV,PNG,WAVE)\n Descritions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio")
+    
+    if output == "CSV":
+        
+        save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
+        
+    elif output == "PNG":
+        
+        save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
+        
+    elif output == "WAVE":
+        
+        save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
+        
+        
+    # -------------------- Cleanup --------------------  
     ser.close()
-    exit()
-
-
-# -------------------- Decode packed bytes --------------------
-
-original_adc_values = decode_packed_12bit_samples(packed_data)
-
-print("Received packed bytes:", len(packed_data))
-print("Decoded samples:", len(original_adc_values))
-
-if len(original_adc_values) == 0:
-    print("No audio samples received.")
-    ser.close()
-    exit()
-
-
-# -------------------- Numpy array converting --------------------
-
-sound_np_array = np.array(original_adc_values)
-
-# Normalise the ADC values into the range -1 to 1.
-# First shift the mean value in the recording down to 0.
-sound_np_array = sound_np_array - sound_np_array.mean()
-
-# Then divide by the new maximum so the largest value becomes 1 and lowest becomes -1.
-sound_np_array = sound_np_array / np.abs(sound_np_array).max()
-
-# Scale normalised audio into the 16-bit signed WAV range.
-sound_np_array = sound_np_array * 32760
-
-# Convert to unsigned 16-bit because waveFile.setsampwidth(2)
-# means each WAV sample is 2 bytes.
-sound_np_array = np.astype(sound_np_array, np.int16)
 
 
 
 
-
-
-
-
-
-
-
-# -------------------- Wave file writing --------------------
-
-with wave.open("test15.wav", "wb") as waveFile:
-    waveFile.setnchannels(1)
-    waveFile.setsampwidth(2)
-    waveFile.setframerate(sample_rate)
-    waveFile.writeframes(sound_np_array.tobytes())
-
-
-
-
-
-
-save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
-save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
-
-# -------------------- Cleanup --------------------
-
-ser.close()
-
-print("Audio saved to test1.wav")
+    
+if __name__ == "__main__":
+    main()
