@@ -285,10 +285,10 @@ def main():
             ser.close()
             exit()
  
-        print(f"{len(original_adc_values)/end_time} samples per second")
+        print(f"{(len(original_adc_values)/overall_time)/1000:2f} Ksps")
         # -------------------- Print results -------------------- 
-        print("\n Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
-        num_outputs = int(input("Provide number of outputs desired:"))
+        print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+        num_outputs = int(input("Provide number of outputs desired:\n"))
 
         
         for i in range(num_outputs):
@@ -321,6 +321,7 @@ def main():
             continue
         
         elif(repeat == "N"): 
+            print("EXITING...")
             ser.close()
             exit()
        
