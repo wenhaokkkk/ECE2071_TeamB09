@@ -4,7 +4,7 @@ import csv
 import wave
 import serial
 import serial.tools.list_ports
-
+import time
 
 # -------------------- Export as Wave file function --------------------
 def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
@@ -224,6 +224,7 @@ def main():
             total_number_of_bytes = (number_of_samples // 2) * 3
 
             # Start manual mode on STM.
+            start_time = time.perf_counter()
             ser.write(b"M")
             
             print("\nRunning manual mode... please wait")
@@ -236,7 +237,8 @@ def main():
 
             # Stop STM from sending.
             ser.write(b"S")
-
+            end_time = time.perf_counter()
+            overall_time = end_time - start_time
             # Manual mode may over-read because we read in 192-byte chunks.
             # Trim back to the exact number of packed bytes expected.
             if len(packed_data) > total_number_of_bytes:
@@ -283,7 +285,7 @@ def main():
             ser.close()
             exit()
  
- 
+        print(f"{len(original_adc_values)/end_time} samples per second")
         # -------------------- Print results -------------------- 
         print("\n Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
         num_outputs = int(input("Provide number of outputs desired:"))
