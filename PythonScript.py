@@ -19,14 +19,14 @@ import os
 
 
 # -------------------- Export as Wave file function --------------------
-def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
+def save_normalised_adc_values_to_wave (sample_rate, sound_np_array, file_name):
     """save adc values as Wave form file (listening file)
 
     Args:
         sample_rate (int): determine how many samples taken per second (Hz)
         sound_np_array (array): noralised Adc values b/w (-1 to 1)
     """
-    with wave.open("test1.wav", "wb") as waveFile:
+    with wave.open(f"{file_name}.wav", "wb") as waveFile:
         waveFile.setnchannels(1)
         waveFile.setsampwidth(2)
         waveFile.setframerate(sample_rate)
@@ -397,16 +397,17 @@ def main():
             while(True):
                 output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n").upper()
                 if output == "CSV":
-                    
-                    save_adc_values_to_csv(original_adc_values, output_filename="raw_adc_values4.csv", sample_rate=sample_rate)
+                    print("")
+                    file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv: '")
+                    save_adc_values_to_csv(original_adc_values, output_filename=f"raw_adc_values-{file_name}.csv", sample_rate=sample_rate)
                     break
                 elif output == "PNG":
-                    
-                    save_adc_plot(original_adc_values, output_filename="adc_plot4.png", sample_rate=sample_rate)
+                    file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png: '")
+                    save_adc_plot(original_adc_values, output_filename=f"raw_adc_plot-{file_name}.png", sample_rate=sample_rate)
                     break
                 elif output == "WAVE":
-                    
-                    save_normalised_adc_values_to_wave (sample_rate = sample_rate, sound_np_array = convert_sound_array(original_adc_values))
+                    file_name = input("Please input name for the file, 'xxxxx.wav: '")
+                    save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), file_name=file_name)
                     break
                 else:
                     print("Invalid input...Restart")
