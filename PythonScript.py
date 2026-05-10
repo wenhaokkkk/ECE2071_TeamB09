@@ -5,6 +5,12 @@ import wave
 import serial
 import serial.tools.list_ports
 import time
+import os
+
+#use this to clear terminal wherever
+os.system('cls' if os.name == 'nt' else 'clear')
+#add protection for max number of inputs (must be int and less than 4)
+#change comments or variable naming?
 
 # -------------------- Export as Wave file function --------------------
 def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
