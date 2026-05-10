@@ -7,7 +7,6 @@ import serial.tools.list_ports
 import time
 import os
 
-#add protection for max number of inputs (must be int and less than 4)
 #change comments or variable naming?
 
 
@@ -347,11 +346,16 @@ def main():
 
         if len(original_adc_values) == 0:
             print("\nNo audio samples received.\n")
-            ser.close()
-            exit()
+            repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
+            if(repeat == "Y"):
+                continue
+            elif(repeat == "N"): 
+                print("EXITING...")
+                ser.close()
+                exit()
         
+
         #check received sample rate 
-        
         overall_timeM = end_timeM - start_timeM
         overall_timeD = end_timeD - start_timeD
         
@@ -365,7 +369,6 @@ def main():
          
         os.system('cls' if os.name == 'nt' else 'clear')
         print(title)
-
         print("="*title_len)
         
         
@@ -376,11 +379,21 @@ def main():
         
         print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
         
-        num_outputs = int(input("Provide number of outputs desired:\n"))
-
+        while (True):
+            num_outputs = input("Provide number of outputs desired:\n")
+            if isinstance(num_outputs, int):
+                if int(num_outputs) < 4 & int(num_outputs) > 0:
+                    num_outputs = int(num_outputs)
+                    break
+                else:
+                    print("Please enter a number greater than 0 and less than 4")
+                    continue
+            else:
+                print("Please enter a valid integer")
+                continue
         
+
         for i in range(num_outputs):
-            
             while(True):
                 output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n").upper()
                 if output == "CSV":
