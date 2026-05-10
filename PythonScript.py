@@ -386,7 +386,7 @@ def main():
         print(title2)
         title2_len = len(title2)
         print("="*title2_len)
-        print("Output Descriptions:\nCSV: Text File format\nPNG: Graph format \n WAVE: Digital Audio\n")
+        print("Output Descriptions:\nCSV: Text File format\nPNG: Graph format\nWAVE: Digital Audio\n")
 
 
         while (True):
