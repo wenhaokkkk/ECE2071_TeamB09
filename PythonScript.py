@@ -244,7 +244,12 @@ def main():
 
 
 
+    try:
+        while(True):
+            
+            # -------------------- User settings & Initiate Interface--------------------
 
+<<<<<<< HEAD
     while(True):
         
         # -------------------- User settings & Initiate Interface--------------------
@@ -265,110 +270,213 @@ def main():
                 continue
             else:
                 break
+=======
+            print("\n"*3)
+            title = 'PROXIMITY TRIGGERED DATA AQUISITION SYSTEM'
+            print(title)
+            title_len = len(title)
+            print("="*title_len)
 
-        sample_rate = 44100
-            
-        # STM sends 192 packed bytes per UART transmit (tho technically can go up to 384). 
-        # Therefore Read 192 bytes at a time from the serial buffer.
-        # 192 bytes = 128 samples.
-        uart_read_chunk_size = 192
-        
-
-
-
-        
-        # -------------------- Receive packed bytes --------------------
-
-        packed_data = bytearray()
-
-        if command_letter == "M":
-            
-            #get recording time
+            # Choose mode:
+            # "M" = manual fixed-time recording
+            # "D" = distance-triggered recording
             while (True):
-                recording_time_seconds = input("Provide Desired Recording Time (seconds):\n")
-                try:
-                    recording_time_seconds = float(recording_time_seconds)
-                    if recording_time_seconds > 0:
-                        break
-                    else:
-                        print("Please enter a number greater than 0")
-                        continue
-                except ValueError:
-                    print("Please enter a valid number")
+                command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n").upper()
+                if command_letter != "M" and command_letter != "D":
+                    print("Invalid command_letter. Use 'M' or 'D'.")
                     continue
+                else:
+                    break
+>>>>>>> 7a140bb7755212d7ff3c4f42f4771523de02a5d8
+
+            sample_rate = 44100
+                
+            # STM sends 192 packed bytes per UART transmit (tho technically can go up to 384). 
+            # Therefore Read 192 bytes at a time from the serial buffer.
+            # 192 bytes = 128 samples.
+            uart_read_chunk_size = 192
             
-            # Manual mode has a known target byte count.
-            number_of_samples = int(recording_time_seconds * sample_rate)
 
-            # Every 2 samples are packed into 3 bytes.
-            total_number_of_bytes = (number_of_samples // 2) * 3
 
-            # Start manual mode on STM & timer
-            ser.write(b"M")
-            start_timeM = time.perf_counter()
+
             
-            print("\nRunning manual mode... please wait")
-            
-            # M mode uses the same receive style as D mode.
-            # It just exits once enough packed bytes have been received.
-            while len(packed_data) < total_number_of_bytes:
-                current_bytes = ser.read(uart_read_chunk_size)
-                packed_data.extend(current_bytes)
+            # -------------------- Receive packed bytes --------------------
 
-            # Stop STM from sending & end timer
-            end_timeM = time.perf_counter()
-            ser.write(b"S")
-            overall_timeM = end_timeM - start_timeM
-            # Manual mode may over-read because we read in 192-byte chunks.
-            # Trim back to the exact number of packed bytes expected.
-            if len(packed_data) > total_number_of_bytes:
-                packed_data = packed_data[:total_number_of_bytes]
+            packed_data = bytearray()
 
+            if command_letter == "M":
+                
+                #get recording time
+                while (True):
+                    recording_time_seconds = input("Provide Desired Recording Time (seconds):\n")
+                    try:
+                        recording_time_seconds = float(recording_time_seconds)
+                        if recording_time_seconds > 0:
+                            break
+                        else:
+                            print("Please enter a number greater than 0")
+                            continue
+                    except ValueError:
+                        print("Please enter a valid number")
+                        continue
+                
+                # Manual mode has a known target byte count.
+                number_of_samples = int(recording_time_seconds * sample_rate)
 
-        elif command_letter == "D":
-            # Distance mode does not know the final byte count.
-            # The STM only sends audio while the object is within 10 cm.
-            print("\nDistance mode started.")
-            print("Press Ctrl+C to stop recording.\n")
+                # Every 2 samples are packed into 3 bytes.
+                total_number_of_bytes = (number_of_samples // 2) * 3
 
-            # Start distance-triggered mode on STM.
-            ser.write(b"D")
-            start_timeD = time.perf_counter()
-
-            try:
-                while True:
+                # Start manual mode on STM & timer
+                ser.write(b"M")
+                start_timeM = time.perf_counter()
+                
+                print("\nRunning manual mode... please wait")
+                
+                # M mode uses the same receive style as D mode.
+                # It just exits once enough packed bytes have been received.
+                while len(packed_data) < total_number_of_bytes:
                     current_bytes = ser.read(uart_read_chunk_size)
                     packed_data.extend(current_bytes)
 
-            except KeyboardInterrupt:
-                # Stop STM from sending.
-                end_timeD = time.perf_counter()
+                # Stop STM from sending & end timer
+                end_timeM = time.perf_counter()
                 ser.write(b"S")
-                overall_timeD = end_timeD - start_timeD
-                print("\nStopping distance mode...\n")
-        
-        
+                overall_timeM = end_timeM - start_timeM
+                # Manual mode may over-read because we read in 192-byte chunks.
+                # Trim back to the exact number of packed bytes expected.
+                if len(packed_data) > total_number_of_bytes:
+                    packed_data = packed_data[:total_number_of_bytes]
 
 
-        
-        # -------------------- Decode packed bytes --------------------
+            elif command_letter == "D":
+                # Distance mode does not know the final byte count.
+                # The STM only sends audio while the object is within 10 cm.
+                print("\nDistance mode started.")
+                print("Press Ctrl+C to stop recording.\n")
 
-        original_adc_values = decode_packed_12bit_samples(packed_data)
+                # Start distance-triggered mode on STM.
+                ser.write(b"D")
+                start_timeD = time.perf_counter()
 
-        print("Received packed bytes:", len(packed_data))
-        print("Decoded samples:", len(original_adc_values))
+                try:
+                    while True:
+                        current_bytes = ser.read(uart_read_chunk_size)
+                        packed_data.extend(current_bytes)
 
-        if len(original_adc_values) == 0:
-            print("\nNo audio samples received.\n")
+                except KeyboardInterrupt:
+                    # Stop STM from sending.
+                    end_timeD = time.perf_counter()
+                    ser.write(b"S")
+                    overall_timeD = end_timeD - start_timeD
+                    print("\nStopping distance mode...\n")
+            
+            
+
+
+            
+            # -------------------- Decode packed bytes --------------------
+
+            original_adc_values = decode_packed_12bit_samples(packed_data)
+
+            print("Received packed bytes:", len(packed_data))
+            print("Decoded samples:", len(original_adc_values))
+
+            if len(original_adc_values) == 0:
+                print("\nNo audio samples received.\n")
+                repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n").upper()
+                if(repeat == "Y"):
+                    #clear terminal:
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    continue
+                elif(repeat == "N"): 
+                    print("EXITING...")
+                    ser.close()
+                    exit()
+            
+            #check and print received sample rate 
+            if command_letter == "M":
+                print(f"{(len(original_adc_values)/overall_timeM)/1000:.2f} Ksps")
+            elif command_letter == "D":
+                print(f"{(len(original_adc_values)/overall_timeD)/1000:.2f} Ksps")
+            
+            
+            
+
+
+            # -------------------- Print results -------------------- 
+            print("\n"*3)
+            title2 = 'Output File Selection'
+            print(title2)
+            title2_len = len(title2)
+            print("="*title2_len)
+            print("Output Descriptions:\nCSV: Text File format\nPNG: Graph format\nWAVE: Digital Audio\n")
+
+
+            while (True):
+                num_outputs = input("Provide number of outputs desired:\n")
+                try:
+                    num_outputs = int(num_outputs)
+                    if num_outputs < 4 and num_outputs > 0:
+                        break
+                    else:
+                        print("Please enter a number greater than 0 and less than 4")
+                        continue
+                except ValueError:
+                    print("Please enter a valid integer")
+                    continue
+            
+            output_choices = []
+            for i in range(num_outputs):
+                while(True):
+                    output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n").upper()
+                    if output == "CSV":
+                        if "CSV" not in output_choices:
+                            output_choices.append("CSV")
+                            file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv: '")
+                            save_adc_values_to_csv(original_adc_values, output_filename=f"raw_adc_values-{file_name}.csv", sample_rate=sample_rate)
+                            break
+                        else:
+                            print("CSV already selected, choose a different output type")
+                            continue
+                    elif output == "PNG":
+                        if "PNG" not in output_choices:
+                            output_choices.append("PNG")
+                            file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png: '")
+                            save_adc_plot(original_adc_values, output_filename=f"raw_adc_plot-{file_name}.png", sample_rate=sample_rate)
+                            break
+                        else:
+                            print("PNG already selected, choose a different output type")
+                            continue
+                    elif output == "WAVE":
+                        if "WAVE" not in output_choices:
+                            output_choices.append("WAVE")
+                            file_name = input("Please input name for the file, 'xxxxx.wav: '")
+                            save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), output_filename=f"{file_name}.wav")
+                            break
+                        else:
+                            print("WAVE already selected, choose a different output type")
+                            continue
+                    else:
+                        print("Please input a valid output type")
+                        continue
+                
+            
+
+
+            
+            # -------------------- Cleanup / repeat -------------------- 
+                
             repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n").upper()
+
             if(repeat == "Y"):
                 #clear terminal:
                 os.system('cls' if os.name == 'nt' else 'clear')
                 continue
-            elif(repeat == "N"): 
+            else: 
                 print("EXITING...")
                 ser.close()
                 exit()
+<<<<<<< HEAD
         
         #check and print received sample rate 
         if command_letter == "M":
@@ -438,8 +546,15 @@ def main():
                     continue
             
         
+=======
+>>>>>>> 7a140bb7755212d7ff3c4f42f4771523de02a5d8
 
+    except KeyboardInterrupt:
+        ser.write(b"S")
+        ser.close
+        exit()
 
+<<<<<<< HEAD
         
         # -------------------- Cleanup / repeat -------------------- 
             
@@ -453,6 +568,8 @@ def main():
             ser.close()
             exit()
        
+=======
+>>>>>>> 7a140bb7755212d7ff3c4f42f4771523de02a5d8
 
     
 
