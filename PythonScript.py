@@ -1,9 +1,9 @@
+import serial
+import serial.tools.list_ports
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import wave
-import serial
-import serial.tools.list_ports
 import time
 import os
 
@@ -19,20 +19,20 @@ import os
 
 
 # -------------------- Export as Wave file function --------------------
-def save_normalised_adc_values_to_wave (sample_rate, sound_np_array, file_name):
+def save_normalised_adc_values_to_wave (sample_rate, sound_np_array, output_filename):
     """save adc values as Wave form file (listening file)
 
     Args:
         sample_rate (int): determine how many samples taken per second (Hz)
         sound_np_array (array): noralised Adc values b/w (-1 to 1)
     """
-    with wave.open(f"{file_name}.wav", "wb") as waveFile:
+    with wave.open(f"{output_filename}", "wb") as waveFile:
         waveFile.setnchannels(1)
         waveFile.setsampwidth(2)
         waveFile.setframerate(sample_rate)
         waveFile.writeframes(sound_np_array.tobytes())
 
-    print("Audio saved to test1.wav")
+    print(f"Audio saved to {output_filename}")
 
 
 
@@ -404,7 +404,7 @@ def main():
                     break
                 elif output == "WAVE":
                     file_name = input("Please input name for the file, 'xxxxx.wav: '")
-                    save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), file_name=file_name)
+                    save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), output_filename=f"{file_name}.wav")
                     break
                 else:
                     print("Invalid input...Restart")
