@@ -237,6 +237,7 @@ def main():
     if stm_ports is None:
         print("No STM devices found.")
         print("Plug in STM and retry...")
+        exit()
     # Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
     ser = serial.Serial(stm_ports.device, 921600, timeout=0.05)
 
@@ -259,7 +260,7 @@ def main():
         # "D" = distance-triggered recording
         while (True):
             command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
-            if command_letter != "M" or command_letter != "D":
+            if command_letter != "M" and command_letter != "D":
                 print("Invalid command_letter. Use 'M' or 'D'.")
                 continue
             else:
@@ -282,7 +283,11 @@ def main():
         if command_letter == "M":
             
             #get recording time
-            recording_time_seconds = int(input("Provide Desired Recording Time (seconds):\n"))
+            recording_time_seconds = input("Provide Desired Recording Time (seconds):\n")
+            try:
+                recording_time_seconds = int(recording_time_seconds)
+            except ValueError:
+                print("Please enter a ")
             
             # Manual mode has a known target byte count.
             number_of_samples = recording_time_seconds * sample_rate
@@ -303,8 +308,9 @@ def main():
                 packed_data.extend(current_bytes)
 
             # Stop STM from sending & end timer
-            ser.write(b"S")
             end_timeM = time.perf_counter()
+            ser.write(b"S")
+            overall_timeM = end_timeM - start_timeM
             # Manual mode may over-read because we read in 192-byte chunks.
             # Trim back to the exact number of packed bytes expected.
             if len(packed_data) > total_number_of_bytes:
@@ -330,6 +336,7 @@ def main():
                 # Stop STM from sending.
                 end_timeD = time.perf_counter()
                 ser.write(b"S")
+                overall_timeD = end_timeD - start_timeD
                 print("\nStopping distance mode...\n")
         
         
@@ -355,14 +362,11 @@ def main():
                 ser.close()
                 exit()
         
-        #check received sample rate 
-        overall_timeM = end_timeM - start_timeM
-        overall_timeD = end_timeD - start_timeD
-        
+        #check and print received sample rate 
         if command_letter == "M":
-            print(f"{(len(original_adc_values)/overall_timeM)/1000:2f} Ksps")
+            print(f"{(len(original_adc_values)/overall_timeM)/1000:.2f} Ksps")
         elif command_letter == "D":
-            print(f"{(len(original_adc_values)/overall_timeD)/1000:2f} Ksps")
+            print(f"{(len(original_adc_values)/overall_timeD)/1000:.2f} Ksps")
         
         
         
@@ -378,14 +382,14 @@ def main():
         
         while (True):
             num_outputs = input("Provide number of outputs desired:\n")
-            if isinstance(num_outputs, int):
-                if int(num_outputs) < 4 & int(num_outputs) > 0:
-                    num_outputs = int(num_outputs)
+            try:
+                num_outputs = int(num_outputs)
+                if num_outputs < 4 and num_outputs > 0:
                     break
                 else:
                     print("Please enter a number greater than 0 and less than 4")
                     continue
-            else:
+            except ValueError:
                 print("Please enter a valid integer")
                 continue
         
@@ -422,8 +426,7 @@ def main():
             #clear terminal:
             os.system('cls' if os.name == 'nt' else 'clear')
             continue
-        
-        elif(repeat == "N"): 
+        else: 
             print("EXITING...")
             ser.close()
             exit()
