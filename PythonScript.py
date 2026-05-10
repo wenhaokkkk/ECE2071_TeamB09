@@ -19,12 +19,16 @@ import os
 
 
 # -------------------- Export as Wave file function --------------------
-def save_normalised_adc_values_to_wave (sample_rate, sound_np_array, output_filename):
+def save_normalised_adc_values_to_wave (sample_rate=44100, sound_np_array=np.array([]), output_filename="sound_output.wav"):
     """save adc values as Wave form file (listening file)
 
     Args:
-        sample_rate (int): determine how many samples taken per second (Hz)
-        sound_np_array (array): noralised Adc values b/w (-1 to 1)
+        sample_rate (int): 
+            determine how many samples taken per second (Hz)
+        sound_np_array (array): 
+            noralised Adc values b/w (-1 to 1)
+        output_filename : str
+            The PNG filename to save.
     """
     with wave.open(f"{output_filename}", "wb") as waveFile:
         waveFile.setnchannels(1)
@@ -61,11 +65,7 @@ def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv",
         for sample_index, adc_value in enumerate(raw_adc_values):  #enumerate convert list into pairs (idx, val)
             time_seconds = sample_index / sample_rate
 
-            writer.writerow([
-                sample_index,
-                time_seconds,
-                int(adc_value)
-            ])
+            writer.writerow([sample_index, time_seconds, int(adc_value)])
 
     print(f"Raw ADC CSV saved as {output_filename}")
 
@@ -78,7 +78,7 @@ def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv",
 
 # -------------------- Export as PNG file function --------------------
 
-def save_adc_plot(raw_adc_values, output_filename="adc_plot.png", sample_rate=None):
+def save_adc_plot(raw_adc_values, output_filename="adc_plot.png", sample_rate=44100):
     """
     Save a PNG plot of raw ADC values.
 
@@ -223,7 +223,7 @@ def main():
 
     # -------------------- Serial setup --------------------
 
-        # Iterates for all serial devices
+    # Iterates for all serial devices
     ports = serial.tools.list_ports.comports()
 
     stm_ports = None
@@ -248,16 +248,23 @@ def main():
         
         # -------------------- User settings & Initiate Interface--------------------
 
-        # Choose mode:
-        # "M" = manual fixed-time recording
-        # "D" = distance-triggered recording
         print("\n"*3)
         title = 'PROXIMITY TRIGGERED DATA AQUISITION SYSTEM'
         print(title)
         title_len = len(title)
         print("="*title_len)
-        command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
-        
+
+        # Choose mode:
+        # "M" = manual fixed-time recording
+        # "D" = distance-triggered recording
+        while (True):
+            command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
+            if command_letter != "M" or command_letter != "D":
+                print("Invalid command_letter. Use 'M' or 'D'.")
+                continue
+            else:
+                break
+
         sample_rate = 44100
             
         # STM sends 192 packed bytes per UART transmit. 
@@ -284,8 +291,8 @@ def main():
             total_number_of_bytes = (number_of_samples // 2) * 3
 
             # Start manual mode on STM & timer
-            start_timeM = time.perf_counter()
             ser.write(b"M")
+            start_timeM = time.perf_counter()
             
             print("\nRunning manual mode... please wait")
             
@@ -298,7 +305,6 @@ def main():
             # Stop STM from sending & end timer
             ser.write(b"S")
             end_timeM = time.perf_counter()
-            overall_timeM = end_timeM - start_timeM
             # Manual mode may over-read because we read in 192-byte chunks.
             # Trim back to the exact number of packed bytes expected.
             if len(packed_data) > total_number_of_bytes:
@@ -322,16 +328,9 @@ def main():
 
             except KeyboardInterrupt:
                 # Stop STM from sending.
-                ser.write(b"S")
                 end_timeD = time.perf_counter()
+                ser.write(b"S")
                 print("\nStopping distance mode...\n")
-
-
-
-        else:
-            print("Invalid command_letter. Use 'M' or 'D'.")
-            ser.close()
-            exit()
         
         
 
@@ -348,13 +347,14 @@ def main():
             print("\nNo audio samples received.\n")
             repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
             if(repeat == "Y"):
+                #clear terminal:
+                os.system('cls' if os.name == 'nt' else 'clear')
                 continue
             elif(repeat == "N"): 
                 print("EXITING...")
                 ser.close()
                 exit()
         
-
         #check received sample rate 
         overall_timeM = end_timeM - start_timeM
         overall_timeD = end_timeD - start_timeD
