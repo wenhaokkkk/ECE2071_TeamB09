@@ -23,5 +23,5 @@ Finally python script collects cleaned data, unpacks it and provides 3 types of 
 ## contributors:
 - Seb
 - Jake Vorrath
-- Wen Hoa
+- Wenhao Yan
 - Chris
