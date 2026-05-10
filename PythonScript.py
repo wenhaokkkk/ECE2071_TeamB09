@@ -363,21 +363,18 @@ def main():
             print(f"{(len(original_adc_values)/overall_timeM)/1000:2f} Ksps")
         elif command_letter == "D":
             print(f"{(len(original_adc_values)/overall_timeD)/1000:2f} Ksps")
-           
-           
-        #clear terminal and reprint title:
-         
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print(title)
-        print("="*title_len)
         
         
-
+        
 
 
         # -------------------- Print results -------------------- 
-        
-        print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+        print("\n"*3)
+        title2 = 'Output File Selection'
+        print(title2)
+        title2_len = len(title2)
+        print("="*title2_len)
+        print("Output Descriptions:\nCSV: Text File format\nPNG: Graph format \n WAVE: Digital Audio\n")
         
         while (True):
             num_outputs = input("Provide number of outputs desired:\n")
@@ -422,6 +419,8 @@ def main():
         repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
 
         if(repeat == "Y"):
+            #clear terminal:
+            os.system('cls' if os.name == 'nt' else 'clear')
             continue
         
         elif(repeat == "N"): 
