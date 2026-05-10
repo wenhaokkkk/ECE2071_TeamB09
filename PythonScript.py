@@ -224,7 +224,7 @@ def main():
             total_number_of_bytes = (number_of_samples // 2) * 3
 
             # Start manual mode on STM.
-            start_time = time.perf_counter()
+            start_timeM = time.perf_counter()
             ser.write(b"M")
             
             print("\nRunning manual mode... please wait")
@@ -237,8 +237,8 @@ def main():
 
             # Stop STM from sending.
             ser.write(b"S")
-            end_time = time.perf_counter()
-            overall_time = end_time - start_time
+            end_timeM = time.perf_counter()
+            overall_timeM = end_timeM - start_timeM
             # Manual mode may over-read because we read in 192-byte chunks.
             # Trim back to the exact number of packed bytes expected.
             if len(packed_data) > total_number_of_bytes:
@@ -253,6 +253,7 @@ def main():
 
             # Start distance-triggered mode on STM.
             ser.write(b"D")
+            start_timeD = time.perf_counter()
 
             try:
                 while True:
@@ -262,6 +263,7 @@ def main():
             except KeyboardInterrupt:
                 # Stop STM from sending.
                 ser.write(b"S")
+                end_timeD = time.perf_counter()
                 print("\nStopping distance mode...\n")
 
 
@@ -284,8 +286,14 @@ def main():
             print("\nNo audio samples received.\n")
             ser.close()
             exit()
- 
-        print(f"{(len(original_adc_values)/overall_time)/1000:2f} Ksps")
+        
+        
+        overall_timeM = end_timeM - start_timeM
+        overall_timeD = end_timeD - start_timeD
+        if command_letter == "M":
+            print(f"{(len(original_adc_values)/overall_timeM)/1000:2f} Ksps")
+        elif command_letter == "D":
+            print(f"{(len(original_adc_values)/overall_timeD)/1000:2f} Ksps")
         # -------------------- Print results -------------------- 
         print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
         num_outputs = int(input("Provide number of outputs desired:\n"))
