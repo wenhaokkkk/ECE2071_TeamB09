@@ -8,7 +8,7 @@ import time
 import os
 
 #use this to clear terminal wherever
-os.system('cls' if os.name == 'nt' else 'clear')
+
 #add protection for max number of inputs (must be int and less than 4)
 #change comments or variable naming?
 
@@ -170,6 +170,10 @@ def decode_packed_12bit_samples(packed_data):
 
 
 
+
+
+
+
 # -------------------- Main function --------------------
 
 def main():
@@ -229,7 +233,7 @@ def main():
             # Every 2 samples are packed into 3 bytes.
             total_number_of_bytes = (number_of_samples // 2) * 3
 
-            # Start manual mode on STM.
+            # Start manual mode on STM & timer
             start_timeM = time.perf_counter()
             ser.write(b"M")
             
@@ -241,7 +245,7 @@ def main():
                 current_bytes = ser.read(uart_read_chunk_size)
                 packed_data.extend(current_bytes)
 
-            # Stop STM from sending.
+            # Stop STM from sending & end timer
             ser.write(b"S")
             end_timeM = time.perf_counter()
             overall_timeM = end_timeM - start_timeM
@@ -283,6 +287,7 @@ def main():
         
         # -------------------- Decode packed bytes --------------------
 
+
         original_adc_values = decode_packed_12bit_samples(packed_data)
 
         print("Received packed bytes:", len(packed_data))
@@ -293,15 +298,29 @@ def main():
             ser.close()
             exit()
         
+        #check received sample rate 
         
         overall_timeM = end_timeM - start_timeM
         overall_timeD = end_timeD - start_timeD
+        
         if command_letter == "M":
             print(f"{(len(original_adc_values)/overall_timeM)/1000:2f} Ksps")
         elif command_letter == "D":
             print(f"{(len(original_adc_values)/overall_timeD)/1000:2f} Ksps")
+           
+           
+        #clear terminal and reprint title:
+         
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(title)
+
+        print("="*title_len)
+        
+        
         # -------------------- Print results -------------------- 
+        
         print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
+        
         num_outputs = int(input("Provide number of outputs desired:\n"))
 
         
@@ -330,7 +349,7 @@ def main():
         # -------------------- Cleanup / repeat -------------------- 
             
         repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
-    
+
         if(repeat == "Y"):
             continue
         
