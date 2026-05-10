@@ -7,10 +7,17 @@ import serial.tools.list_ports
 import time
 import os
 
-#use this to clear terminal wherever
-
 #add protection for max number of inputs (must be int and less than 4)
 #change comments or variable naming?
+
+
+
+
+
+
+
+
+
 
 # -------------------- Export as Wave file function --------------------
 def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
@@ -27,6 +34,12 @@ def save_normalised_adc_values_to_wave (sample_rate, sound_np_array):
         waveFile.writeframes(sound_np_array.tobytes())
 
     print("Audio saved to test1.wav")
+
+
+
+
+
+
 
 
 # -------------------- Export as CSV file function --------------------
@@ -56,6 +69,9 @@ def save_adc_values_to_csv(raw_adc_values, output_filename="raw_adc_values.csv",
             ])
 
     print(f"Raw ADC CSV saved as {output_filename}")
+
+
+
 
 
 
@@ -108,6 +124,12 @@ def save_adc_plot(raw_adc_values, output_filename="adc_plot.png", sample_rate=No
     print(f"Plot saved as {output_filename}")
 
 
+
+
+
+
+
+
 # -------------------- Numpy array converting --------------------
 def convert_sound_array(original_adc_values):
     sound_np_array = np.array(original_adc_values)
@@ -127,6 +149,11 @@ def convert_sound_array(original_adc_values):
     sound_np_array = np.astype(sound_np_array, np.int16)
     
     return sound_np_array
+
+
+
+
+
 
 
 
@@ -174,11 +201,29 @@ def decode_packed_12bit_samples(packed_data):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 # -------------------- Main function --------------------
 
 def main():
     
+
+
+
+
     # -------------------- Serial setup --------------------
+
         # Iterates for all serial devices
     ports = serial.tools.list_ports.comports()
 
@@ -195,6 +240,9 @@ def main():
         print("Plug in STM and retry...")
     # Timeout is needed so distance mode can stop with Ctrl+C even when no bytes are being sent.
     ser = serial.Serial(stm_ports.device, 921600, timeout=0.05)
+
+
+
 
 
     while(True):
@@ -217,6 +265,9 @@ def main():
         # 192 bytes = 128 samples.
         uart_read_chunk_size = 192
         
+
+
+
         
         # -------------------- Receive packed bytes --------------------
 
@@ -284,9 +335,10 @@ def main():
             exit()
         
         
+
+
         
         # -------------------- Decode packed bytes --------------------
-
 
         original_adc_values = decode_packed_12bit_samples(packed_data)
 
@@ -317,6 +369,9 @@ def main():
         print("="*title_len)
         
         
+
+
+
         # -------------------- Print results -------------------- 
         
         print("\n Output Descriptions:\n CSV: Text File format\n PNG: Graph format \n WAVE: Digital Audio\n")
@@ -345,6 +400,8 @@ def main():
                     continue
             
         
+
+
         
         # -------------------- Cleanup / repeat -------------------- 
             
