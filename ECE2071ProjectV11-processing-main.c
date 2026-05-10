@@ -240,6 +240,72 @@ uint16_t readUltrasonicCm(void);
 
 
 
+
+/* -------------------- Moving average function -------------------- */
+
+uint16_t updateMovingAverage(uint16_t newSample) {
+    //remove the old value currently sitting at this circular-buffer position (containing oldest value) from the running sum
+    movingAverageSum -= movingAverageBuffer[movingAverageIndex];
+
+    //store the new sample into the moving average circular buffer
+    movingAverageBuffer[movingAverageIndex] = newSample;
+
+    //add the new sample into the running sum
+    movingAverageSum += newSample;
+
+
+    //advance the circular-buffer index
+    movingAverageIndex++;
+    if (movingAverageIndex >= MOVING_AVERAGE_SIZE) {
+        movingAverageIndex = 0;
+    }
+
+
+    //returns constant of moving average not ready when the moving average isnt full up to size yet
+    if (movingAverageCount < MOVING_AVERAGE_SIZE) {
+        movingAverageCount++;
+
+        if (movingAverageCount < MOVING_AVERAGE_SIZE) {
+            return MOVING_AVERAGE_NOT_READY;
+        }
+    }
+
+    //once the moving average is fully warm, Right shift by moving average shift => divide by moving average size
+    return (uint16_t)(movingAverageSum >> MOVING_AVERAGE_SHIFT);
+}
+
+
+
+
+
+
+
+
+/* -------------------- Outlier Rejection function -------------------- */
+
+uint16_t rejectOutliers(uint16_t newSample, uint16_t referenceSample) {
+    int16_t difference;
+
+    difference = newSample - referenceSample;
+
+    if (difference < 0) {
+        difference = -difference;
+    }
+
+    if (difference > OUTLIER_THRESHOLD) {
+        return referenceSample;
+    }
+
+    return newSample;
+}
+
+
+
+
+
+
+
+
 /* -------------------- Python Send functions -------------------- */
 
 void resetPackedSampleState(void) {
@@ -283,6 +349,8 @@ void packTwo12BitSamples(uint16_t sample1, uint16_t sample2, uint8_t *packedBuff
 
 void processSpiDmaHalfSamples(uint16_t *sampleBufferStart, uint16_t sampleCount, int firstOrSecond) {
     uint16_t rawSample;
+    uint16_t filteredSample;
+    uint16_t averagedSample;
     uint16_t packedByteIndex = 0;
     uint8_t *uartSendingBuffer = uartPackedBuffer[uartBufferIndex];
 
@@ -298,12 +366,30 @@ void processSpiDmaHalfSamples(uint16_t *sampleBufferStart, uint16_t sampleCount,
         //ensures the samples contains only the bottom 12 bits
         rawSample = sampleBufferStart[i] & 0x0FFF;
 
+        //does outlier rejection, compares against last known good averaged sample
+        if (movingAverageReady) {
+            filteredSample = rejectOutliers(rawSample, lastValidFilteredSample);
+        } else {
+            filteredSample = rawSample;
+        }
+
+        //does moving average filter
+        averagedSample = updateMovingAverage(filteredSample);
+
+        //skip samples during moving average warm-up
+        if (averagedSample == MOVING_AVERAGE_NOT_READY) {
+            continue;
+        }
+
+        movingAverageReady = 1;
+        lastValidFilteredSample = averagedSample;
+
         //packs each sample with a previously stored sample (if doesnt exist, saves current sample as 'previously stored sample'
         if (!pendingSampleForPackingValid) {
-            pendingSampleForPacking = rawSample;
+            pendingSampleForPacking = averagedSample;
             pendingSampleForPackingValid = 1;
         } else {
-            packTwo12BitSamples(pendingSampleForPacking, rawSample, &uartSendingBuffer[packedByteIndex]);
+            packTwo12BitSamples(pendingSampleForPacking, averagedSample, &uartSendingBuffer[packedByteIndex]);
             packedByteIndex += 3;
             pendingSampleForPackingValid = 0;
         }
