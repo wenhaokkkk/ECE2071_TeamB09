@@ -7,7 +7,6 @@ import wave
 import time
 import os
 
-#change comments or variable naming?
 
 
 
@@ -26,9 +25,9 @@ def save_normalised_adc_values_to_wave (sample_rate=44100, sound_np_array=np.arr
         sample_rate (int): 
             determine how many samples taken per second (Hz)
         sound_np_array (array): 
-            noralised Adc values b/w (-1 to 1)
+            normalised Adc values b/w (-1 to 1)
         output_filename : str
-            The PNG filename to save.
+            The WAVE filename to save.
     """
     with wave.open(f"{output_filename}", "wb") as waveFile:
         waveFile.setnchannels(1)
@@ -159,7 +158,8 @@ def convert_sound_array(original_adc_values):
 # -------------------- Decode function --------------------
 
 def decode_packed_12bit_samples(packed_data):
-    """_summary_
+    """
+    Decodes the ADC values received into full samples
 
     Args:
         list/numpy array: packed bytes from STM32
@@ -259,7 +259,7 @@ def main():
         # "M" = manual fixed-time recording
         # "D" = distance-triggered recording
         while (True):
-            command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n")
+            command_letter = input("Provide desired mode\nManual (fixed time): 'M' \nDistance Triggered Recording: 'D'\n").upper()
             if command_letter != "M" and command_letter != "D":
                 print("Invalid command_letter. Use 'M' or 'D'.")
                 continue
@@ -268,7 +268,8 @@ def main():
 
         sample_rate = 44100
             
-        # STM sends 192 packed bytes per UART transmit. 
+        # STM sends 192 packed bytes per UART transmit (tho technically can go up to 384). 
+        # Therefore Read 192 bytes at a time from the serial buffer.
         # 192 bytes = 128 samples.
         uart_read_chunk_size = 192
         
@@ -283,14 +284,21 @@ def main():
         if command_letter == "M":
             
             #get recording time
-            recording_time_seconds = input("Provide Desired Recording Time (seconds):\n")
-            try:
-                recording_time_seconds = int(recording_time_seconds)
-            except ValueError:
-                print("Please enter a ")
+            while (True):
+                recording_time_seconds = input("Provide Desired Recording Time (seconds):\n")
+                try:
+                    recording_time_seconds = float(recording_time_seconds)
+                    if recording_time_seconds > 0:
+                        break
+                    else:
+                        print("Please enter a number greater than 0")
+                        continue
+                except ValueError:
+                    print("Please enter a valid number")
+                    continue
             
             # Manual mode has a known target byte count.
-            number_of_samples = recording_time_seconds * sample_rate
+            number_of_samples = int(recording_time_seconds * sample_rate)
 
             # Every 2 samples are packed into 3 bytes.
             total_number_of_bytes = (number_of_samples // 2) * 3
@@ -352,7 +360,7 @@ def main():
 
         if len(original_adc_values) == 0:
             print("\nNo audio samples received.\n")
-            repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
+            repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n").upper()
             if(repeat == "Y"):
                 #clear terminal:
                 os.system('cls' if os.name == 'nt' else 'clear')
@@ -379,7 +387,8 @@ def main():
         title2_len = len(title2)
         print("="*title2_len)
         print("Output Descriptions:\nCSV: Text File format\nPNG: Graph format \n WAVE: Digital Audio\n")
-        
+
+
         while (True):
             num_outputs = input("Provide number of outputs desired:\n")
             try:
@@ -393,25 +402,39 @@ def main():
                 print("Please enter a valid integer")
                 continue
         
-
+        output_choices = []
         for i in range(num_outputs):
             while(True):
                 output = input(f"Please specify output {i+1} format (CSV,PNG,WAVE):\n").upper()
                 if output == "CSV":
-                    print("")
-                    file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv: '")
-                    save_adc_values_to_csv(original_adc_values, output_filename=f"raw_adc_values-{file_name}.csv", sample_rate=sample_rate)
-                    break
+                    if "CSV" not in output_choices:
+                        output_choices.append("CSV")
+                        file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv: '")
+                        save_adc_values_to_csv(original_adc_values, output_filename=f"raw_adc_values-{file_name}.csv", sample_rate=sample_rate)
+                        break
+                    else:
+                        print("CSV already selected, choose a different output type")
+                        continue
                 elif output == "PNG":
-                    file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png: '")
-                    save_adc_plot(original_adc_values, output_filename=f"raw_adc_plot-{file_name}.png", sample_rate=sample_rate)
-                    break
+                    if "PNG" not in output_choices:
+                        output_choices.append("PNG")
+                        file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png: '")
+                        save_adc_plot(original_adc_values, output_filename=f"raw_adc_plot-{file_name}.png", sample_rate=sample_rate)
+                        break
+                    else:
+                        print("PNG already selected, choose a different output type")
+                        continue
                 elif output == "WAVE":
-                    file_name = input("Please input name for the file, 'xxxxx.wav: '")
-                    save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), output_filename=f"{file_name}.wav")
-                    break
+                    if "WAVE" not in output_choices:
+                        output_choices.append("WAVE")
+                        file_name = input("Please input name for the file, 'xxxxx.wav: '")
+                        save_normalised_adc_values_to_wave(sample_rate=sample_rate, sound_np_array=convert_sound_array(original_adc_values), output_filename=f"{file_name}.wav")
+                        break
+                    else:
+                        print("WAVE already selected, choose a different output type")
+                        continue
                 else:
-                    print("Invalid input...Restart")
+                    print("Please input a valid output type")
                     continue
             
         
@@ -420,7 +443,7 @@ def main():
         
         # -------------------- Cleanup / repeat -------------------- 
             
-        repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n")
+        repeat = input("\nEnter 'Y' to continue or 'N' to exit:\n").upper()
 
         if(repeat == "Y"):
             #clear terminal:
