@@ -249,7 +249,7 @@ def main():
         
         # -------------------- User settings & Initiate Interface--------------------
 
-        os.system('cls' if os.name == 'nt' else 'clear')
+        print("\n"*3)
         title = 'PROXIMITY TRIGGERED DATA AQUISITION SYSTEM'
         print(title)
         title_len = len(title)
@@ -381,7 +381,7 @@ def main():
 
 
         # -------------------- Print results -------------------- 
-        print("\n"*2)
+        print("\n"*3)
         title2 = 'Output File Selection'
         print(title2)
         title2_len = len(title2)
@@ -447,6 +447,7 @@ def main():
 
         if(repeat == "Y"):
             #clear terminal:
+            os.system('cls' if os.name == 'nt' else 'clear')
             continue
         else: 
             print("EXITING...")
