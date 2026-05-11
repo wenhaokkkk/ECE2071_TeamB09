@@ -418,7 +418,7 @@ def main():
                     elif output == "PNG":
                         if "PNG" not in output_choices:
                             output_choices.append("PNG")
-                            file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png: '")
+                            file_name = input("Please input name extension for the file, 'raw_adc_plot-xxxxx.png': ")
                             save_adc_plot(original_adc_values, output_filename=f"raw_adc_plot-{file_name}.png", sample_rate=sample_rate)
                             break
                         else:
