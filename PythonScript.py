@@ -409,7 +409,7 @@ def main():
                     if output == "CSV":
                         if "CSV" not in output_choices:
                             output_choices.append("CSV")
-                            file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv: '")
+                            file_name = input("Please input name extension for the file, 'raw_adc_valuesxxxxx.csv': ")
                             save_adc_values_to_csv(original_adc_values, output_filename=f"raw_adc_values-{file_name}.csv", sample_rate=sample_rate)
                             break
                         else:
@@ -453,7 +453,7 @@ def main():
                 
     except KeyboardInterrupt:
         ser.write(b"S")
-        ser.close
+        ser.close()
         exit()    
         
 
